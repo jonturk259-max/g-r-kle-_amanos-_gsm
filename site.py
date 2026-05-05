@@ -9,6 +9,14 @@ st.set_page_config(page_title="Görükle Amanos GSM | Profesyonel Teknik Servis"
 # --- GELİŞMİŞ TASARIM (CSS) ---
 st.markdown("""
     <style>
+           /* Buton yazılarını her zaman beyaz ve görünür yapar */
+    .stButton button p, .stElementAction a, .st-emotion-cache-7ym5gk p {
+        color: white !important;
+    }
+    
+    /* WhatsApp ve Harita gibi linkli butonların içindeki metni sabitler */
+    a[data-testid="stBaseLinkButton"] span {
+        color: white !important;
     /* Genel Arka Plan ve Yazı Rengi */
     .stApp { background-color: #fcfcfc !important; }
     h1, h2, h3, p, span, div, li { color: #0f172a !important; font-family: 'Inter', sans-serif; }
