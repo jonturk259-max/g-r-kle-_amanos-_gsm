@@ -1,6 +1,7 @@
 """
 GÖRÜKLE AMANOS GSM - TAM TEŞEKKÜLLÜ WEB UYGULAMASI
-Sürüm: 3.2 (Metin ve İçerik Doğrulama Güncellemesi)
+Sürüm: 3.3 (Görsel ve Metin Düzeltmeleri)
+Geliştirici: Kodlama Desteği (Yapay Zeka Asistanı)
 Açıklama: Bu dosya SQLite veritabanı, şifreli Admin paneli ve modüler 
 sayfa yapısı içeren tam kapsamlı bir Streamlit uygulamasıdır.
 """
@@ -104,7 +105,6 @@ def sayfa_ana_sayfa():
         st.markdown("<h1 style='font-size:3.5rem; line-height: 1.2;'>Profesyonel <br><span style='color:#2ea043;'>Teknik Servis</span> Merkezi</h1>", unsafe_allow_html=True)
         st.markdown("<p style='font-size:1.2rem; color:#8b949e;'>Görükle Amanos GSM olarak cihazlarınızı yüksek teknoloji laboratuvarımızda, uzman yaklaşımlarla hayata döndürüyoruz.</p>", unsafe_allow_html=True)
         
-        # --- YAPILAN GÜNCELLEME: "15+ Yıllık Tecrübe" yerine "Uzman Teknik Kadro" yazıldı. ---
         st.markdown("""
         <div style='display:flex; gap:20px; margin-top:30px;'>
             <div style='background-color:#21262d; padding:15px; border-radius:8px; border:1px solid #30363d;'><h3 style='margin:0; color:#2ea043;'>Uzman</h3><small>Teknik Kadro</small></div>
@@ -125,7 +125,8 @@ def sayfa_hizmetler():
         with col1:
             st.markdown("<div class='bilgi-karti'><h3>Ekran Revizyonu ve Değişimi</h3><p>Dış camı kırık ancak iç ekranı sağlam cihazlarda maliyetli ekran değişimi yerine, endüstriyel pres makineleri ile sadece ön cam değişimi uyguluyoruz.</p></div>", unsafe_allow_html=True)
         with col2:
-            st.image("https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=600", use_container_width=True)
+            # --- YAPILAN GÜNCELLEME: AMD işlemci resmi yerine kırık cam/telefon tamir aletleri resmi eklendi ---
+            st.image("https://images.unsplash.com/photo-1588508065123-287b28e013da?w=600", use_container_width=True)
             
     with tab_batarya:
         col1, col2 = st.columns(2)
