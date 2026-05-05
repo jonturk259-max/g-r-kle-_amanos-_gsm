@@ -1,127 +1,115 @@
 import streamlit as st
+import pandas as pd
+import os
 
-# Sayfa yapılandırması
-st.set_page_config(page_title="Amanos GSM | Hizmetlerimiz", layout="wide")
+# 1. SAYFA AYARLARI
+st.set_page_config(page_title="Amanos GSM | Teknik Servis", layout="wide", page_icon="📱")
 
-# --- GELİŞMİŞ HİZMET SAYFASI CSS ---
+# --- GELİŞMİŞ KOYU TEMA VE STİL (CSS) ---
 st.markdown("""
 <style>
     .stApp { background-color: #0b0d0e; color: #ffffff; }
+    section[data-testid="stSidebar"] { background-color: #16181a !important; border-right: 1px solid #2ecc71; }
     
-    /* Hizmet Bloğu Konteynırı */
-    .hizmet-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 80px 8%;
-        gap: 50px;
+    /* Takip Kutusu Tasarımı */
+    .takip-container {
+        background: #1a1d1f;
+        padding: 30px;
+        border-radius: 15px;
+        border: 2px solid #2ecc71;
+        text-align: center;
+        margin: 20px 0;
     }
+    .durum-text { font-size: 24px; font-weight: bold; color: #2ecc71; margin-top: 15px; }
     
-    .hizmet-text { flex: 1; }
-    .hizmet-image { flex: 1; text-align: center; }
-    .hizmet-image img { 
-        max-width: 100%; 
-        border-radius: 15px; 
-        box-shadow: 0 10px 30px rgba(46, 204, 113, 0.1);
-    }
-
-    /* Numara Yuvarlağı */
-    .number-circle {
-        background-color: #2ecc71;
-        color: black;
-        width: 35px;
-        height: 35px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        margin-bottom: 20px;
-    }
-
-    .hizmet-title { font-size: 32px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; }
-    .hizmet-desc { color: #aaa; line-height: 1.6; margin-bottom: 20px; }
+    /* Hizmet Kartları */
+    .hizmet-card { background: #16181a; padding: 20px; border-radius: 10px; border-bottom: 3px solid #2ecc71; }
     
-    /* Liste Maddeleri */
-    .hizmet-list { list-style: none; padding: 0; margin-bottom: 25px; }
-    .hizmet-list li { margin-bottom: 10px; color: #eee; font-size: 14px; }
-    .hizmet-list li::before { content: "• "; color: #2ecc71; font-weight: bold; }
-
-    /* Buton */
-    .btn-more {
-        background-color: #333;
-        color: white !important;
-        padding: 10px 25px;
-        border-radius: 4px;
-        text-decoration: none;
-        font-size: 12px;
-        font-weight: bold;
-        transition: 0.3s;
-        border: 1px solid #444;
+    /* WhatsApp Yüzen Buton */
+    .wa-link {
+        position: fixed; bottom: 20px; right: 20px; background-color: #25d366;
+        color: white !important; padding: 15px 25px; border-radius: 50px;
+        text-decoration: none; font-weight: bold; z-index: 1000;
     }
-    .btn-more:hover { background-color: #2ecc71; color: black !important; border-color: #2ecc71; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 1. EKRAN DEĞİŞİMİ ---
-col1, col2 = st.columns(2)
-with col1:
-    st.markdown("""
-    <div class="hizmet-text">
-        <div class="number-circle">1</div>
-        <div class="hizmet-title">EKRAN DEĞİŞİMİ</div>
-        <p class="hizmet-desc">AMANOS GSM servis cihazınızın ekranını orijinal olarak değiştirerek sorunsuz çalışmasını sağlar.</p>
-        <p><strong>Ekranın Kırılma Nedenleri:</strong></p>
-        <ul class="hizmet-list">
-            <li>Telefonun darbe alması</li>
-            <li>Yüksekten düşme</li>
-            <li>Üzerine oturma</li>
-        </ul>
-        <a href="#" class="btn-more">DEVAMINI OKU ></a>
-    </div>
-    """, unsafe_allow_html=True)
-with col2:
-    # Buraya elinde olan kırık ekranlı telefon resmini koyabilirsin
-    st.image("https://via.placeholder.com/500x400/1a1d1f/2ecc71?text=Ekran+Degisimi+Gorseli", use_container_width=True)
+# --- YAN MENÜ ---
+with st.sidebar:
+    st.markdown("<h2 style='color:#2ecc71;'>AMANOS GSM</h2>", unsafe_allow_html=True)
+    secim = st.radio("MENÜ", ["Ana Sayfa", "🔍 Cihaz Durum Sorgula", "🛠️ Hizmetlerimiz", "🖼️ Galeri", "📞 İletişim"])
+    st.markdown("---")
+    st.write("📍 Görükle / BURSA")
+    st.write("📞 0530 872 59 79")
 
-st.markdown("<hr style='border-color: #222;'>", unsafe_allow_html=True)
+# --- SAYFA İÇERİKLERİ ---
 
-# --- 2. BATARYA DEĞİŞİMİ (Ters Düzen) ---
-col3, col4 = st.columns(2)
-with col3:
-    st.image("https://via.placeholder.com/500x400/1a1d1f/2ecc71?text=Batarya+Tamiri+Gorseli", use_container_width=True)
-with col4:
-    st.markdown("""
-    <div class="hizmet-text">
-        <div class="number-circle">2</div>
-        <div class="hizmet-title">BATARYA DEĞİŞİMİ</div>
-        <p class="hizmet-desc">Bataryanızın ömrü bitmişse cihazdan yeteri kadar performans almanız mümkün değildir.</p>
-        <ul class="hizmet-list">
-            <li>Pil göstergesi %100 olmasına rağmen aniden kapanma</li>
-            <li>Pil sağlığının %80 altına düşmesi</li>
-            <li>Cihazda donma ve yavaşlama</li>
-        </ul>
-        <a href="#" class="btn-more">DEVAMINI OKU ></a>
-    </div>
-    """, unsafe_allow_html=True)
+# 1. ANA SAYFA
+if secim == "Ana Sayfa":
+    col1, col2 = st.columns([1.5, 1])
+    with col1:
+        st.markdown("<h1 style='font-size:50px;'>Bursa'nın En İyi <br><span style='color:#2ecc71;'>Teknik Servis</span> Deneyimi</h1>", unsafe_allow_html=True)
+        st.write("Profesyonel ekipman ve 15 yıllık tecrübeyle tüm markalara garantili tamir hizmeti sunuyoruz.")
+        if st.button("Hemen Cihazını Sorgula"):
+            st.info("Lütfen sol menüden 'Cihaz Durum Sorgula' sekmesine geçiniz.")
+    with col2:
+        st.image("https://images.unsplash.com/photo-1512428559087-560ad5185257?auto=format&fit=crop&w=800&q=80")
 
-st.markdown("<hr style='border-color: #222;'>", unsafe_allow_html=True)
+# 2. CİHAZ DURUM SORGULAMA (YENİ EKLEDİĞİMİZ KISIM)
+elif secim == "🔍 Cihaz Durum Sorgula":
+    st.markdown("<h1 style='color:#2ecc71;'>🔍 Cihaz Durumu Sorgulama</h1>", unsafe_allow_html=True)
+    st.write("Size verilen 4 haneli takip numarasını aşağıya yazarak cihazınızın son durumunu öğrenebilirsiniz.")
+    
+    takip_no = st.text_input("Takip Numaranızı Giriniz (Örn: 1001)", placeholder="Numarayı buraya yazın...")
+    
+    if takip_no:
+        # Excel dosyasını kontrol et ve oku
+        if os.path.exists("takip.xlsx"):
+            df = pd.read_excel("takip.xlsx")
+            # Numarayı ara
+            sonuc = df[df['takip_no'].astype(str) == takip_no]
+            
+            if not sonuc.empty:
+                st.markdown(f"""
+                <div class="takip-container">
+                    <h3>Cihaz: {sonuc.iloc[0]['cihaz']}</h3>
+                    <div class="durum-text">DURUM: {sonuc.iloc[0]['durum']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.error("Üzgünüz, bu numara ile kayıtlı bir cihaz bulunamadı. Lütfen numarayı kontrol ediniz.")
+        else:
+            st.warning("Sistem şu an güncelleniyor (takip.xlsx dosyası bulunamadı). Lütfen dükkanla iletişime geçiniz.")
 
-# --- 3. ANAKART TAMİRİ ---
-col5, col6 = st.columns(2)
-with col5:
-    st.markdown("""
-    <div class="hizmet-text">
-        <div class="number-circle">3</div>
-        <div class="hizmet-title">ANAKART TAMİRİ</div>
-        <p class="hizmet-desc">Amanos GSM güvencesiyle iPhone ve diğer marka telefonlarınızın anakart tamiri ile cihazınızı hayata döndürün.</p>
-        <ul class="hizmet-list">
-            <li>Sıvı teması sonrası oluşan kısa devreler</li>
-            <li>Entegre ve mikro-çip değişimleri</li>
-            <li>Şebeke ve WiFi sorunları onarımı</li>
-        </ul>
-        <a href="#" class="btn-more">DEVAMINI OKU ></a>
-    </div>
-    """, unsafe_allow_html=True)
-with col6:
-    st.image("https://via.placeholder.com/500x400/1a1d1f/2ecc71?text=Anakart+Tamiri+Gorseli", use_container_width=True)
+# 3. HİZMETLERİMİZ
+elif secim == "🛠️ Hizmetlerimiz":
+    st.title("Hizmetlerimiz")
+    colA, colB = st.columns(2)
+    with colA:
+        st.image("https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?auto=format&fit=crop&w=600&q=80")
+    with colB:
+        st.markdown("## 📱 Ekran Değişimi")
+        st.write("Orijinal parçalarla 30 dakikada ekran değişimi yapıyoruz.")
+        st.markdown("- 6 Ay Garanti\n- Ücretsiz Ekran Koruyucu Hediye")
+
+# 4. GALERİ
+elif secim == "🖼️ Galeri":
+    st.title("Teknik Servis Galeri")
+    st.image(["https://images.unsplash.com/photo-1540553016722-983e48a2cd10?w=400", 
+              "https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=400",
+              "https://images.unsplash.com/photo-1588508065123-287b28e013da?w=400"], width=300)
+
+# 5. İLETİŞİM
+elif secim == "📞 İletişim":
+    st.title("İletişim")
+    st.success("📍 Adres: Sakarya Mah. Atatürk Cd. No:35 Görükle/Bursa")
+    st.info("📞 Tel: 0530 872 59 79")
+    st.markdown("### Konumumuz")
+    st.image("https://via.placeholder.com/800x400/16181a/2ecc71?text=Harita+Buraya+Gelecek")
+
+# YÜZEN WHATSAPP BUTONU
+st.markdown("""
+<a href="https://wa.me/905308725979" class="wa-link">
+    💬 WhatsApp'tan Fiyat Al
+</a>
+""", unsafe_allow_html=True)
