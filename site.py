@@ -1,39 +1,33 @@
 """
 GÖRÜKLE AMANOS GSM - TAM TEŞEKKÜLLÜ WEB UYGULAMASI
-Sürüm: 3.0 (Enterprise)
-Geliştirici: Kodlama Desteği (Yapay Zeka Asistanı)
-Açıklama: Bu dosya SQLite veritabanı, şifreli Admin paneli, gelişmiş CSS animasyonları
-ve modüler sayfa yapısı içeren tam kapsamlı bir Streamlit uygulamasıdır.
+Sürüm: 3.2 (Metin ve İçerik Doğrulama Güncellemesi)
+Açıklama: Bu dosya SQLite veritabanı, şifreli Admin paneli ve modüler 
+sayfa yapısı içeren tam kapsamlı bir Streamlit uygulamasıdır.
 """
 
 # ==========================================
 # 1. KÜTÜPHANELERİN İÇE AKTARILMASI
 # ==========================================
 import streamlit as st
-import sqlite3 # Gerçek veritabanı işlemleri için
+import sqlite3
 import pandas as pd
-from datetime import datetime # Tarih ve saat kayıtları için
-import time # Animasyon efektleri için
+from datetime import datetime
+import time
 
 # ==========================================
 # 2. SAYFA YAPILANDIRMASI
 # ==========================================
-# Bu ayar sayfanın genel genişliğini ve tarayıcıdaki ismini belirler. İlk sırada olmalıdır.
-st.set_page_config(page_title="Görükle Amanos GSM | Kurumsal Servis", page_icon="⚙️", layout="wide")
+st.set_page_config(page_title="Görükle Amanos GSM | Kurumsal Servis", page_icon="📱", layout="wide")
 
 # ==========================================
 # 3. VERİTABANI (DATABASE) FONKSİYONLARI
 # ==========================================
-# Geleneksel Excel yerine çok daha hızlı ve güvenli olan SQLite kullanıyoruz.
-
 def veritabani_olustur():
-    """Veritabanını ve gerekli tabloları oluşturur. (Eğer yoksa)"""
+    """Veritabanını ve gerekli tabloları oluşturur."""
     conn = sqlite3.connect('amanos_gsm.db')
     c = conn.cursor()
-    # Cihaz Takip Tablosu
     c.execute('''CREATE TABLE IF NOT EXISTS cihaz_takip 
                  (takip_no TEXT PRIMARY KEY, musteri_adi TEXT, cihaz_modeli TEXT, durum TEXT, tarih TEXT)''')
-    # İletişim/Servis Formu Tablosu
     c.execute('''CREATE TABLE IF NOT EXISTS mesajlar 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, isim TEXT, tel TEXT, konu TEXT, mesaj TEXT, tarih TEXT)''')
     conn.commit()
@@ -48,7 +42,7 @@ def cihaz_ekle(takip_no, musteri, cihaz, durum):
         c.execute("INSERT INTO cihaz_takip VALUES (?, ?, ?, ?, ?)", (takip_no, musteri, cihaz, durum, tarih))
         conn.commit()
         basari = True
-    except sqlite3.IntegrityError: # Eğer aynı takip numarası zaten varsa hata vermesini engelleriz.
+    except sqlite3.IntegrityError:
         basari = False
     conn.close()
     return basari
@@ -80,7 +74,7 @@ def mesaj_kaydet(isim, tel, konu, mesaj):
     conn.commit()
     conn.close()
 
-# Sistemi başlatırken veritabanı tablolarını hazırla
+# Uygulama başlarken veritabanı dosyası yoksa otomatik oluşturur.
 veritabani_olustur()
 
 # ==========================================
@@ -88,32 +82,13 @@ veritabani_olustur()
 # ==========================================
 st.markdown("""
 <style>
-    /* Genel Uygulama Teması */
     .stApp { background-color: #0d1117; color: #c9d1d9; font-family: 'Segoe UI', Tahoma, sans-serif; }
-    
-    /* Menü Çubuğu (Sidebar) */
     section[data-testid="stSidebar"] { background-color: #161b22 !important; border-right: 1px solid #30363d; }
-    
-    /* Global Başlıklar ve Yeşil Çizgi */
     h1, h2, h3 { color: #ffffff !important; }
     .baslik-cizgisi { width: 80px; height: 4px; background-color: #2ea043; margin-bottom: 30px; border-radius: 2px; }
-
-    /* Hizmet ve Bilgi Kartları (Gölge ve Animasyonlu) */
-    .bilgi-karti {
-        background-color: #21262d;
-        padding: 30px;
-        border-radius: 12px;
-        border: 1px solid #30363d;
-        border-left: 5px solid #2ea043;
-        transition: all 0.3s ease;
-        margin-bottom: 25px;
-    }
+    .bilgi-karti { background-color: #21262d; padding: 30px; border-radius: 12px; border: 1px solid #30363d; border-left: 5px solid #2ea043; transition: all 0.3s ease; margin-bottom: 25px; }
     .bilgi-karti:hover { transform: translateY(-5px); box-shadow: 0 8px 24px rgba(46, 160, 67, 0.2); border-color: #2ea043; }
-    
-    /* Başarı/Durum Kutuları */
     .durum-kutusu { background: linear-gradient(135deg, #2ea043 0%, #238636 100%); padding: 20px; border-radius: 10px; color: white; text-align: center; }
-
-    /* Standart Streamlit Butonlarını Ezme (Override) */
     div.stButton > button:first-child { background-color: #238636; color: white; border: 1px solid rgba(240, 246, 252, 0.1); border-radius: 6px; font-weight: 600; padding: 10px 20px; width: 100%; transition: 0.2s; }
     div.stButton > button:first-child:hover { background-color: #2ea043; border-color: #8b949e; }
 </style>
@@ -122,19 +97,17 @@ st.markdown("""
 # ==========================================
 # 5. MODÜLER SAYFA FONKSİYONLARI
 # ==========================================
-# Her sayfayı bir fonksiyon (def) olarak tanımlıyoruz. Bu, kodun 10-15 sayfa
-# uzunluğunda karmaşık projelere genişletilmesini sağlayan profesyonel bir standarttır.
-
 def sayfa_ana_sayfa():
     """Sitenin karşılama sayfası."""
     col_yazi, col_resim = st.columns([1.2, 1])
     with col_yazi:
         st.markdown("<h1 style='font-size:3.5rem; line-height: 1.2;'>Profesyonel <br><span style='color:#2ea043;'>Teknik Servis</span> Merkezi</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='font-size:1.2rem; color:#8b949e;'>Görükle Amanos GSM olarak cihazlarınızı yüksek teknoloji laboratuvarımızda, uzman mühendislik yaklaşımlarıyla hayata döndürüyoruz.</p>", unsafe_allow_html=True)
+        st.markdown("<p style='font-size:1.2rem; color:#8b949e;'>Görükle Amanos GSM olarak cihazlarınızı yüksek teknoloji laboratuvarımızda, uzman yaklaşımlarla hayata döndürüyoruz.</p>", unsafe_allow_html=True)
         
+        # --- YAPILAN GÜNCELLEME: "15+ Yıllık Tecrübe" yerine "Uzman Teknik Kadro" yazıldı. ---
         st.markdown("""
         <div style='display:flex; gap:20px; margin-top:30px;'>
-            <div style='background-color:#21262d; padding:15px; border-radius:8px; border:1px solid #30363d;'><h3 style='margin:0; color:#2ea043;'>15+</h3><small>Yıllık Tecrübe</small></div>
+            <div style='background-color:#21262d; padding:15px; border-radius:8px; border:1px solid #30363d;'><h3 style='margin:0; color:#2ea043;'>Uzman</h3><small>Teknik Kadro</small></div>
             <div style='background-color:#21262d; padding:15px; border-radius:8px; border:1px solid #30363d;'><h3 style='margin:0; color:#2ea043;'>%100</h3><small>Orijinal Parça</small></div>
             <div style='background-color:#21262d; padding:15px; border-radius:8px; border:1px solid #30363d;'><h3 style='margin:0; color:#2ea043;'>6 Ay</h3><small>Servis Garantisi</small></div>
         </div>
@@ -145,14 +118,12 @@ def sayfa_ana_sayfa():
 def sayfa_hizmetler():
     """Detaylı hizmetler sayfası (Sekmeli Yapı)."""
     st.markdown("<h1>Uzmanlık Alanlarımız</h1><div class='baslik-cizgisi'></div>", unsafe_allow_html=True)
-    
-    # st.tabs ile içeriği kategorize ediyoruz
     tab_ekran, tab_batarya, tab_anakart = st.tabs(["📱 Ekran & Cam İşlemleri", "🔋 Batarya Sistemleri", "💻 Mikro-Lehim & Anakart"])
     
     with tab_ekran:
         col1, col2 = st.columns(2)
         with col1:
-            st.markdown("<div class='bilgi-karti'><h3>Ekran Revizyonu ve Değişimi</h3><p>Dış camı kırık ancak iç ekranı sağlam cihazlarda maliyetli ekran değişimi yerine, endüstriyel pres makineleri ile sadece ön cam değişimi uyguluyoruz. Komple hasarlarda ise True-Tone aktarımlı orijinal ekran montajı gerçekleştirilir.</p></div>", unsafe_allow_html=True)
+            st.markdown("<div class='bilgi-karti'><h3>Ekran Revizyonu ve Değişimi</h3><p>Dış camı kırık ancak iç ekranı sağlam cihazlarda maliyetli ekran değişimi yerine, endüstriyel pres makineleri ile sadece ön cam değişimi uyguluyoruz.</p></div>", unsafe_allow_html=True)
         with col2:
             st.image("https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=600", use_container_width=True)
             
@@ -161,12 +132,12 @@ def sayfa_hizmetler():
         with col1:
             st.image("https://images.unsplash.com/photo-1625842268584-8f3bf9ff16a0?w=600", use_container_width=True)
         with col2:
-            st.markdown("<div class='bilgi-karti'><h3>Hücre Yenileme ve Batarya Testi</h3><p>Pil döngüsü (cycle count) dolmuş bataryaların yerine amper değeri yüksek, onaylı piller takılır. Cihazın güç akımı ölçülerek gizli kaçaklar (kısa devre) varsa tespit edilir.</p></div>", unsafe_allow_html=True)
+            st.markdown("<div class='bilgi-karti'><h3>Hücre Yenileme ve Batarya Testi</h3><p>Pil döngüsü dolmuş bataryaların yerine amper değeri yüksek, onaylı piller takılır. Cihazın güç akımı ölçülerek gizli kaçaklar tespit edilir.</p></div>", unsafe_allow_html=True)
 
     with tab_anakart:
         col1, col2 = st.columns(2)
         with col1:
-            st.markdown("<div class='bilgi-karti'><h3>Entegre ve Çip Seviyesi Onarım</h3><p>Açılmayan, şarj almayan veya sıvıya maruz kalmış cihazlar termal kameralar ve osiloskop cihazları ile incelenir. Hasarlı mikroskobik parçalar yenisiyle değiştirilip cihazın anakartı kurtarılır.</p></div>", unsafe_allow_html=True)
+            st.markdown("<div class='bilgi-karti'><h3>Entegre ve Çip Seviyesi Onarım</h3><p>Açılmayan, şarj almayan veya sıvıya maruz kalmış cihazlar termal kameralar ve osiloskop cihazları ile incelenir.</p></div>", unsafe_allow_html=True)
         with col2:
             st.image("https://images.unsplash.com/photo-1597733336794-12d05021d510?w=600", use_container_width=True)
 
@@ -180,12 +151,11 @@ def sayfa_cihaz_sorgulama():
     if st.button("Sistemde Ara 🔍"):
         if takip_kodu:
             with st.spinner('Veritabanına güvenli bağlantı kuruluyor...'):
-                time.sleep(1) # Gerçekçi bir sorgu süresi animasyonu
+                time.sleep(1) 
                 
             sonuc = cihaz_sorgula(takip_kodu)
             
             if sonuc:
-                # Veritabanından gelen veriler: 0:takip_no, 1:musteri, 2:cihaz, 3:durum, 4:tarih
                 st.markdown(f"""
                 <div class='durum-kutusu'>
                     <h2 style='color:white; margin-bottom:5px;'>📱 {sonuc[2]}</h2>
@@ -196,8 +166,7 @@ def sayfa_cihaz_sorgulama():
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # İlerleme Çubuğu Mantığı (Görsel Zenginlik)
-                if "Teslim" in sonuc[3]:
+                if "Teslim" in sonuc[3] or "Hazır" in sonuc[3]:
                     st.progress(100)
                 elif "Tamir" in sonuc[3] or "Onarım" in sonuc[3]:
                     st.progress(60)
@@ -237,7 +206,6 @@ def sayfa_iletisim_ve_form():
         st.markdown("**Müşteri Hizmetleri:** 0530 872 59 79")
         st.markdown("**Çalışma Saatleri:** 09:00 - 22:00")
         st.markdown("---")
-        st.markdown("Aşağıdaki butona tıklayarak doğrudan teknik personelimizle anlık mesajlaşma başlatabilirsiniz.")
         st.markdown("<a href='https://wa.me/905308725979' style='display:block; text-align:center; background-color:#25d366; color:white; padding:10px; border-radius:5px; text-decoration:none; font-weight:bold;'>WhatsApp Destek Hattına Bağlan</a>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -245,16 +213,15 @@ def sayfa_admin_paneli():
     """Sadece dükkan sahibinin şifreyle girebildiği, veritabanı yönetim paneli."""
     st.markdown("<h1>⚙️ Gelişmiş Yönetici Paneli</h1><div class='baslik-cizgisi'></div>", unsafe_allow_html=True)
     
-    # Basit bir oturum (Session State) kontrolü yapıyoruz.
     if "admin_giris" not in st.session_state:
         st.session_state["admin_giris"] = False
 
     if not st.session_state["admin_giris"]:
         sifre = st.text_input("Sisteme erişmek için yönetici şifresini giriniz:", type="password")
         if st.button("Giriş Yap"):
-            if sifre == "amanos123": # Yönetici şifreniz (Değiştirebilirsiniz)
+            if sifre == "amanos123": 
                 st.session_state["admin_giris"] = True
-                st.rerun() # Sayfayı yenile ve içeriği göster
+                st.rerun() 
             else:
                 st.error("Hatalı şifre. Yetkisiz erişim denemesi kaydedildi.")
     
@@ -282,13 +249,11 @@ def sayfa_admin_paneli():
             
             st.markdown("---")
             st.markdown("### Mevcut Cihazları Görüntüle ve Güncelle")
-            # Pandas kütüphanesi ile SQL'den tüm cihazları çekip tablo olarak gösteriyoruz
             conn = sqlite3.connect('amanos_gsm.db')
             df = pd.read_sql_query("SELECT * FROM cihaz_takip", conn)
             conn.close()
             st.dataframe(df, use_container_width=True)
             
-            # Durum Güncelleme Alanı
             st.markdown("#### Durum Güncelle")
             guncellenecek_no = st.selectbox("Durumu güncellenecek cihazı seçin:", df['takip_no'].tolist() if not df.empty else ["Cihaz Yok"])
             yeni_durum = st.text_input("Yeni durum mesajını yazın (Örn: Ekran siparişi verildi)")
@@ -314,19 +279,14 @@ def sayfa_admin_paneli():
             st.rerun()
 
 # ==========================================
-# 6. ANA KONTROL BLOĞU (UYGULAMANIN ÇALIŞMA MANTIĞI)
+# 6. ANA KONTROL BLOĞU (UYGULAMA BAŞLATICI)
 # ==========================================
-# Uygulamanın kalbi burasıdır. Sol menüden (Sidebar) seçilen değere göre
-# yukarıda yazdığımız modüler fonksiyonları çağırır (çalıştırır).
-
 def main():
-    # Yan menü yapısı
     with st.sidebar:
-        st.image("https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=200", use_container_width=True)
+        st.image("https://images.unsplash.com/photo-1512054502232-10a0a035d672?auto=format&fit=crop&w=400&q=80", use_container_width=True)
         st.markdown("<h2 style='color:#2ea043; text-align:center;'>AMANOS GSM</h2>", unsafe_allow_html=True)
         st.markdown("---")
         
-        # Gezinme (Routing) Sistemi
         secilen_sayfa = st.radio("MENÜ", [
             "🏠 Ana Sayfa", 
             "🛠️ Hizmetlerimiz", 
@@ -336,7 +296,6 @@ def main():
         ])
         st.markdown("---")
     
-    # Seçime Göre İlgili Fonksiyonu Tetikleme
     if secilen_sayfa == "🏠 Ana Sayfa":
         sayfa_ana_sayfa()
     elif secilen_sayfa == "🛠️ Hizmetlerimiz":
@@ -348,9 +307,7 @@ def main():
     elif secilen_sayfa == "⚙️ Yönetici Girişi (Admin)":
         sayfa_admin_paneli()
         
-    # Her sayfanın en altına eklenecek ortak alt bilgi (Footer)
-    st.markdown("<div style='text-align:center; padding:30px; margin-top:50px; border-top:1px solid #30363d; color:#8b949e;'><small>Görükle Amanos GSM Web Uygulaması Altyapısı v3.0 | SQLite Veritabanı Sistemleri ile Güçlendirilmiştir.</small></div>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align:center; padding:30px; margin-top:50px; border-top:1px solid #30363d; color:#8b949e;'><small>Görükle Amanos GSM Web Uygulaması | Kodlama Desteği</small></div>", unsafe_allow_html=True)
 
-# Kodun sadece doğrudan çalıştırıldığında main() fonksiyonunu çağırmasını sağlayan Python standardı.
 if __name__ == "__main__":
     main()
