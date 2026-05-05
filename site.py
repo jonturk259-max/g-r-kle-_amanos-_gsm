@@ -1,8 +1,8 @@
 """
 GÖRÜKLE AMANOS GSM - TAM TEŞEKKÜLLÜ WEB UYGULAMASI
-Sürüm: 5.1 (Güvenlik ve Şifre Güncellemesi)
-Açıklama: Yönetici şifresi kodun en üstüne, kolayca değiştirilebilir 
-bir sabit değişken (Constant) olarak taşındı.
+Sürüm: 5.3 (Dolar Üzerinden Stok ve Fiyat Takibi)
+Açıklama: Stok modülündeki fiyatlandırma birimleri TL'den 
+Dolar'a ($) çevrilmiştir. Veritabanı mimarisi korundu.
 """
 
 # ==========================================
@@ -15,10 +15,9 @@ from datetime import datetime
 import time
 
 # ==========================================
-# ★ GÜVENLİK AYARLARI (ŞİFREYİ BURADAN DEĞİŞTİREBİLİRSİN) ★
+# ★ GÜVENLİK AYARLARI ★
 # ==========================================
-# İSTEDİĞİN ŞİFREYİ AŞAĞIDAKİ TIRNAK İŞARETLERİ İÇİNE YAZABİLİRSİN:
-ADMIN_SIFRESI = "MCD4791MCD4791m,." 
+ADMIN_SIFRESI = "Görükle16" 
 
 # ==========================================
 # 2. SAYFA YAPILANDIRMASI
@@ -36,7 +35,7 @@ def veritabani_olustur():
     c.execute('''CREATE TABLE IF NOT EXISTS mesajlar 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, isim TEXT, tel TEXT, konu TEXT, mesaj TEXT, tarih TEXT)''')
     c.execute('''CREATE TABLE IF NOT EXISTS stok_takip 
-                 (urun_id INTEGER PRIMARY KEY AUTOINCREMENT, kategori TEXT, urun_adi TEXT, adet INTEGER)''')
+                 (urun_id INTEGER PRIMARY KEY AUTOINCREMENT, kategori TEXT, urun_adi TEXT, adet INTEGER, fiyat REAL)''')
     conn.commit()
     conn.close()
 
@@ -84,17 +83,17 @@ def mesaj_kaydet(isim, tel, konu, mesaj):
     conn.commit()
     conn.close()
 
-def stok_ekle(kategori, urun_adi, adet):
+def stok_ekle(kategori, urun_adi, adet, fiyat):
     conn = sqlite3.connect('amanos_gsm.db')
     c = conn.cursor()
-    c.execute("INSERT INTO stok_takip (kategori, urun_adi, adet) VALUES (?, ?, ?)", (kategori, urun_adi, adet))
+    c.execute("INSERT INTO stok_takip (kategori, urun_adi, adet, fiyat) VALUES (?, ?, ?, ?)", (kategori, urun_adi, adet, fiyat))
     conn.commit()
     conn.close()
 
-def stok_guncelle(urun_id, yeni_adet):
+def stok_guncelle(urun_id, yeni_adet, yeni_fiyat):
     conn = sqlite3.connect('amanos_gsm.db')
     c = conn.cursor()
-    c.execute("UPDATE stok_takip SET adet = ? WHERE urun_id = ?", (yeni_adet, urun_id))
+    c.execute("UPDATE stok_takip SET adet = ?, fiyat = ? WHERE urun_id = ?", (yeni_adet, yeni_fiyat, urun_id))
     conn.commit()
     conn.close()
 
@@ -237,7 +236,6 @@ def sayfa_admin_paneli():
     if not st.session_state["admin_giris"]:
         sifre = st.text_input("Sisteme erişmek için yönetici şifresini giriniz:", type="password")
         if st.button("Giriş Yap"):
-            # ŞİFRE KONTROLÜ BURADA YAPILIYOR (En üstteki ADMIN_SIFRESI değişkenine bakıyor)
             if sifre == ADMIN_SIFRESI: 
                 st.session_state["admin_giris"] = True
                 st.rerun() 
@@ -309,12 +307,18 @@ def sayfa_admin_paneli():
             st.markdown("### Sisteme Yeni Ürün / Parça Ekle")
             with st.form("yeni_stok_ekle"):
                 s_kat = st.selectbox("Kategori", ["Ekran", "Batarya", "Arka Cam", "Anakart Parçası", "Aksesuar"])
-                s_ad = st.text_input("Ürün Adı (Örn: iPhone 11 Pro Ekran)")
-                s_adet = st.number_input("Adet", min_value=0, step=1)
+                s_ad = st.text_input("Ürün Adı (Örn: iPhone 11 Pro Orijinal Ekran)")
+                
+                col_yeni_adet, col_yeni_fiyat = st.columns(2)
+                with col_yeni_adet:
+                    s_adet = st.number_input("Adet", min_value=0, step=1)
+                with col_yeni_fiyat:
+                    # GÜNCELLEME: TL yazan kısımlar Dolar ($) olarak güncellendi.
+                    s_fiyat = st.number_input("Birim Fiyatı ($)", min_value=0.0, step=10.0, format="%.2f")
                 
                 if st.form_submit_button("Stoklara Ekle"):
                     if s_ad:
-                        stok_ekle(s_kat, s_ad, s_adet)
+                        stok_ekle(s_kat, s_ad, s_adet, s_fiyat)
                         st.success(f"{s_ad} başarıyla stoklara eklendi.")
                         time.sleep(1)
                         st.rerun()
@@ -322,29 +326,40 @@ def sayfa_admin_paneli():
                         st.warning("Ürün adı boş bırakılamaz.")
             
             st.markdown("---")
-            st.markdown("### 📦 Güncel Stok Durumu")
+            st.markdown("### 📦 Güncel Stok ve Fiyat Durumu")
             conn = sqlite3.connect('amanos_gsm.db')
-            df_stok = pd.read_sql_query("SELECT urun_id as ID, kategori as Kategori, urun_adi as 'Ürün Adı', adet as Adet FROM stok_takip", conn)
+            # GÜNCELLEME: Veritabanından çekerken sütun başlığını 'Fiyat ($)' olarak gösteriyoruz.
+            df_stok = pd.read_sql_query("SELECT urun_id as ID, kategori as Kategori, urun_adi as 'Ürün Adı', adet as Adet, fiyat as 'Fiyat ($)' FROM stok_takip", conn)
             conn.close()
             st.dataframe(df_stok, use_container_width=True)
             
             st.markdown("---")
-            st.markdown("### 🔄 Stok Adedi Güncelle veya Sil")
+            st.markdown("### 🔄 Stok Adedi veya Fiyat Güncelle")
             if not df_stok.empty:
                 secenekler = df_stok['ID'].astype(str) + " - " + df_stok['Ürün Adı']
                 secilen_stok = st.selectbox("İşlem Yapılacak Ürün:", secenekler.tolist())
                 secilen_id = int(secilen_stok.split(" - ")[0])
                 
-                col_stok1, col_stok2 = st.columns(2)
+                mevcut_adet = int(df_stok[df_stok['ID'] == secilen_id]['Adet'].values[0])
+                # GÜNCELLEME: Çekilen sütun adı 'Fiyat ($)' olarak değiştirildi.
+                mevcut_fiyat = float(df_stok[df_stok['ID'] == secilen_id]['Fiyat ($)'].values[0])
+                
+                col_stok1, col_stok2, col_stok3 = st.columns(3)
+                
                 with col_stok1:
-                    yeni_adet = st.number_input("Yeni Adet Miktarını Girin:", min_value=0, step=1)
-                    if st.button("Adedi Güncelle"):
-                        stok_guncelle(secilen_id, yeni_adet)
-                        st.success("Stok başarıyla güncellendi!")
-                        time.sleep(1)
-                        st.rerun()
+                    yeni_adet = st.number_input("Güncel Adet", min_value=0, step=1, value=mevcut_adet)
                 with col_stok2:
-                    st.write("Ürünü stok listesinden tamamen çıkarmak için:")
+                    # GÜNCELLEME: Metin kısmı güncellendi.
+                    yeni_fiyat = st.number_input("Güncel Fiyat ($)", min_value=0.0, step=10.0, format="%.2f", value=mevcut_fiyat)
+                    
+                if st.button("Seçili Ürünü Güncelle"):
+                    stok_guncelle(secilen_id, yeni_adet, yeni_fiyat)
+                    st.success("Stok ve fiyat başarıyla güncellendi!")
+                    time.sleep(1)
+                    st.rerun()
+                
+                with col_stok3:
+                    st.markdown("<br>", unsafe_allow_html=True) 
                     if st.button("🚨 Ürünü Sistemden Sil"):
                         stok_sil(secilen_id)
                         st.error("Ürün sistemden silindi.")
