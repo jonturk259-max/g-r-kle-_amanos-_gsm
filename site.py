@@ -1,9 +1,8 @@
 """
 GÖRÜKLE AMANOS GSM - TAM TEŞEKKÜLLÜ WEB UYGULAMASI
-Sürüm: 3.3 (Görsel ve Metin Düzeltmeleri)
-Geliştirici: Kodlama Desteği (Yapay Zeka Asistanı)
-Açıklama: Bu dosya SQLite veritabanı, şifreli Admin paneli ve modüler 
-sayfa yapısı içeren tam kapsamlı bir Streamlit uygulamasıdır.
+Sürüm: 5.1 (Güvenlik ve Şifre Güncellemesi)
+Açıklama: Yönetici şifresi kodun en üstüne, kolayca değiştirilebilir 
+bir sabit değişken (Constant) olarak taşındı.
 """
 
 # ==========================================
@@ -16,6 +15,12 @@ from datetime import datetime
 import time
 
 # ==========================================
+# ★ GÜVENLİK AYARLARI (ŞİFREYİ BURADAN DEĞİŞTİREBİLİRSİN) ★
+# ==========================================
+# İSTEDİĞİN ŞİFREYİ AŞAĞIDAKİ TIRNAK İŞARETLERİ İÇİNE YAZABİLİRSİN:
+ADMIN_SIFRESI = "MCD4791MCD4791m,." 
+
+# ==========================================
 # 2. SAYFA YAPILANDIRMASI
 # ==========================================
 st.set_page_config(page_title="Görükle Amanos GSM | Kurumsal Servis", page_icon="📱", layout="wide")
@@ -24,18 +29,18 @@ st.set_page_config(page_title="Görükle Amanos GSM | Kurumsal Servis", page_ico
 # 3. VERİTABANI (DATABASE) FONKSİYONLARI
 # ==========================================
 def veritabani_olustur():
-    """Veritabanını ve gerekli tabloları oluşturur."""
     conn = sqlite3.connect('amanos_gsm.db')
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS cihaz_takip 
                  (takip_no TEXT PRIMARY KEY, musteri_adi TEXT, cihaz_modeli TEXT, durum TEXT, tarih TEXT)''')
     c.execute('''CREATE TABLE IF NOT EXISTS mesajlar 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, isim TEXT, tel TEXT, konu TEXT, mesaj TEXT, tarih TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS stok_takip 
+                 (urun_id INTEGER PRIMARY KEY AUTOINCREMENT, kategori TEXT, urun_adi TEXT, adet INTEGER)''')
     conn.commit()
     conn.close()
 
 def cihaz_ekle(takip_no, musteri, cihaz, durum):
-    """Admin panelinden veritabanına yeni bir cihaz ekler."""
     tarih = datetime.now().strftime("%Y-%m-%d %H:%M")
     conn = sqlite3.connect('amanos_gsm.db')
     c = conn.cursor()
@@ -49,7 +54,6 @@ def cihaz_ekle(takip_no, musteri, cihaz, durum):
     return basari
 
 def cihaz_durum_guncelle(takip_no, yeni_durum):
-    """Mevcut bir cihazın tamir durumunu günceller."""
     tarih = datetime.now().strftime("%Y-%m-%d %H:%M")
     conn = sqlite3.connect('amanos_gsm.db')
     c = conn.cursor()
@@ -57,8 +61,14 @@ def cihaz_durum_guncelle(takip_no, yeni_durum):
     conn.commit()
     conn.close()
 
+def cihaz_sil(takip_no):
+    conn = sqlite3.connect('amanos_gsm.db')
+    c = conn.cursor()
+    c.execute("DELETE FROM cihaz_takip WHERE takip_no = ?", (takip_no,))
+    conn.commit()
+    conn.close()
+
 def cihaz_sorgula(takip_no):
-    """Müşterinin girdiği numaraya göre cihazı veritabanında arar."""
     conn = sqlite3.connect('amanos_gsm.db')
     c = conn.cursor()
     c.execute("SELECT * FROM cihaz_takip WHERE takip_no=?", (takip_no,))
@@ -67,7 +77,6 @@ def cihaz_sorgula(takip_no):
     return veri
 
 def mesaj_kaydet(isim, tel, konu, mesaj):
-    """Müşterinin iletişim formundan gönderdiği mesajı veritabanına yazar."""
     tarih = datetime.now().strftime("%Y-%m-%d %H:%M")
     conn = sqlite3.connect('amanos_gsm.db')
     c = conn.cursor()
@@ -75,7 +84,27 @@ def mesaj_kaydet(isim, tel, konu, mesaj):
     conn.commit()
     conn.close()
 
-# Uygulama başlarken veritabanı dosyası yoksa otomatik oluşturur.
+def stok_ekle(kategori, urun_adi, adet):
+    conn = sqlite3.connect('amanos_gsm.db')
+    c = conn.cursor()
+    c.execute("INSERT INTO stok_takip (kategori, urun_adi, adet) VALUES (?, ?, ?)", (kategori, urun_adi, adet))
+    conn.commit()
+    conn.close()
+
+def stok_guncelle(urun_id, yeni_adet):
+    conn = sqlite3.connect('amanos_gsm.db')
+    c = conn.cursor()
+    c.execute("UPDATE stok_takip SET adet = ? WHERE urun_id = ?", (yeni_adet, urun_id))
+    conn.commit()
+    conn.close()
+
+def stok_sil(urun_id):
+    conn = sqlite3.connect('amanos_gsm.db')
+    c = conn.cursor()
+    c.execute("DELETE FROM stok_takip WHERE urun_id = ?", (urun_id,))
+    conn.commit()
+    conn.close()
+
 veritabani_olustur()
 
 # ==========================================
@@ -99,12 +128,10 @@ st.markdown("""
 # 5. MODÜLER SAYFA FONKSİYONLARI
 # ==========================================
 def sayfa_ana_sayfa():
-    """Sitenin karşılama sayfası."""
     col_yazi, col_resim = st.columns([1.2, 1])
     with col_yazi:
         st.markdown("<h1 style='font-size:3.5rem; line-height: 1.2;'>Profesyonel <br><span style='color:#2ea043;'>Teknik Servis</span> Merkezi</h1>", unsafe_allow_html=True)
         st.markdown("<p style='font-size:1.2rem; color:#8b949e;'>Görükle Amanos GSM olarak cihazlarınızı yüksek teknoloji laboratuvarımızda, uzman yaklaşımlarla hayata döndürüyoruz.</p>", unsafe_allow_html=True)
-        
         st.markdown("""
         <div style='display:flex; gap:20px; margin-top:30px;'>
             <div style='background-color:#21262d; padding:15px; border-radius:8px; border:1px solid #30363d;'><h3 style='margin:0; color:#2ea043;'>Uzman</h3><small>Teknik Kadro</small></div>
@@ -116,7 +143,6 @@ def sayfa_ana_sayfa():
         st.image("https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?auto=format&fit=crop&w=800&q=80", use_container_width=True)
 
 def sayfa_hizmetler():
-    """Detaylı hizmetler sayfası (Sekmeli Yapı)."""
     st.markdown("<h1>Uzmanlık Alanlarımız</h1><div class='baslik-cizgisi'></div>", unsafe_allow_html=True)
     tab_ekran, tab_batarya, tab_anakart = st.tabs(["📱 Ekran & Cam İşlemleri", "🔋 Batarya Sistemleri", "💻 Mikro-Lehim & Anakart"])
     
@@ -125,7 +151,6 @@ def sayfa_hizmetler():
         with col1:
             st.markdown("<div class='bilgi-karti'><h3>Ekran Revizyonu ve Değişimi</h3><p>Dış camı kırık ancak iç ekranı sağlam cihazlarda maliyetli ekran değişimi yerine, endüstriyel pres makineleri ile sadece ön cam değişimi uyguluyoruz.</p></div>", unsafe_allow_html=True)
         with col2:
-            # --- YAPILAN GÜNCELLEME: AMD işlemci resmi yerine kırık cam/telefon tamir aletleri resmi eklendi ---
             st.image("https://images.unsplash.com/photo-1588508065123-287b28e013da?w=600", use_container_width=True)
             
     with tab_batarya:
@@ -143,7 +168,6 @@ def sayfa_hizmetler():
             st.image("https://images.unsplash.com/photo-1597733336794-12d05021d510?w=600", use_container_width=True)
 
 def sayfa_cihaz_sorgulama():
-    """SQLite veritabanı ile canlı cihaz durumu okuma sayfası."""
     st.markdown("<h1>Cihaz Durum Sorgulama Merkezi</h1><div class='baslik-cizgisi'></div>", unsafe_allow_html=True)
     st.markdown("<p style='color:#8b949e;'>Servis formunuzda yer alan 4 haneli PIN numarasını girerek onarım sürecini canlı takip edebilirsiniz.</p>", unsafe_allow_html=True)
     
@@ -153,9 +177,7 @@ def sayfa_cihaz_sorgulama():
         if takip_kodu:
             with st.spinner('Veritabanına güvenli bağlantı kuruluyor...'):
                 time.sleep(1) 
-                
             sonuc = cihaz_sorgula(takip_kodu)
-            
             if sonuc:
                 st.markdown(f"""
                 <div class='durum-kutusu'>
@@ -166,7 +188,6 @@ def sayfa_cihaz_sorgulama():
                     <small>Son Güncelleme: {sonuc[4]}</small>
                 </div>
                 """, unsafe_allow_html=True)
-                
                 if "Teslim" in sonuc[3] or "Hazır" in sonuc[3]:
                     st.progress(100)
                 elif "Tamir" in sonuc[3] or "Onarım" in sonuc[3]:
@@ -179,9 +200,7 @@ def sayfa_cihaz_sorgulama():
             st.warning("Lütfen geçerli bir takip numarası yazınız.")
 
 def sayfa_iletisim_ve_form():
-    """Müşteri veri girişi ve veritabanına yazma sayfası."""
     st.markdown("<h1>İletişim ve Servis Talebi</h1><div class='baslik-cizgisi'></div>", unsafe_allow_html=True)
-    
     c1, c2 = st.columns(2)
     with c1:
         st.markdown("<div class='bilgi-karti'>", unsafe_allow_html=True)
@@ -191,7 +210,6 @@ def sayfa_iletisim_ve_form():
             tel = st.text_input("Telefon Numaranız")
             konu = st.selectbox("Arıza Kategorisi", ["Ekran/Cam Kırık", "Batarya Sorunu", "Cihaz Açılmıyor", "Sıvı Teması", "Diğer"])
             mesaj = st.text_area("Cihazın Şikayetini Kısaca Belirtiniz")
-            
             if st.form_submit_button("Talebi Veritabanına İlet"):
                 if isim and tel:
                     mesaj_kaydet(isim, tel, konu, mesaj)
@@ -211,7 +229,6 @@ def sayfa_iletisim_ve_form():
         st.markdown("</div>", unsafe_allow_html=True)
 
 def sayfa_admin_paneli():
-    """Sadece dükkan sahibinin şifreyle girebildiği, veritabanı yönetim paneli."""
     st.markdown("<h1>⚙️ Gelişmiş Yönetici Paneli</h1><div class='baslik-cizgisi'></div>", unsafe_allow_html=True)
     
     if "admin_giris" not in st.session_state:
@@ -220,7 +237,8 @@ def sayfa_admin_paneli():
     if not st.session_state["admin_giris"]:
         sifre = st.text_input("Sisteme erişmek için yönetici şifresini giriniz:", type="password")
         if st.button("Giriş Yap"):
-            if sifre == "amanos123": 
+            # ŞİFRE KONTROLÜ BURADA YAPILIYOR (En üstteki ADMIN_SIFRESI değişkenine bakıyor)
+            if sifre == ADMIN_SIFRESI: 
                 st.session_state["admin_giris"] = True
                 st.rerun() 
             else:
@@ -229,7 +247,7 @@ def sayfa_admin_paneli():
     if st.session_state["admin_giris"]:
         st.success("Güvenli yönetici oturumu açıldı.")
         
-        tab_cihazlar, tab_mesajlar = st.tabs(["📲 Cihaz Takip Yönetimi", "📬 Gelen Müşteri Talepleri"])
+        tab_cihazlar, tab_mesajlar, tab_stok = st.tabs(["📲 Cihaz Takip Yönetimi", "📬 Gelen Talepler", "📦 Stok Yönetimi"])
         
         with tab_cihazlar:
             st.markdown("### Sisteme Yeni Cihaz Ekle")
@@ -238,43 +256,104 @@ def sayfa_admin_paneli():
                 c_ad = st.text_input("Müşteri Adı")
                 c_mod = st.text_input("Cihaz Marka/Model")
                 c_durum = st.selectbox("Başlangıç Durumu", ["İşleme Alındı", "Arıza Tespiti Yapılıyor", "Parça Bekliyor", "Onarımda", "Tamamlandı - Teslime Hazır"])
-                
                 if st.form_submit_button("Cihazı Veritabanına Kaydet"):
                     if c_no and c_ad:
                         if cihaz_ekle(c_no, c_ad, c_mod, c_durum):
                             st.success(f"{c_no} numaralı cihaz başarıyla eklendi.")
+                            time.sleep(1)
+                            st.rerun()
                         else:
                             st.error("Bu takip numarası sistemde zaten var! Başka bir numara deneyin.")
                     else:
                         st.warning("Numara ve Müşteri Adı boş bırakılamaz.")
             
             st.markdown("---")
-            st.markdown("### Mevcut Cihazları Görüntüle ve Güncelle")
+            st.markdown("### Mevcut Cihazları Görüntüle")
             conn = sqlite3.connect('amanos_gsm.db')
             df = pd.read_sql_query("SELECT * FROM cihaz_takip", conn)
             conn.close()
             st.dataframe(df, use_container_width=True)
             
-            st.markdown("#### Durum Güncelle")
-            guncellenecek_no = st.selectbox("Durumu güncellenecek cihazı seçin:", df['takip_no'].tolist() if not df.empty else ["Cihaz Yok"])
-            yeni_durum = st.text_input("Yeni durum mesajını yazın (Örn: Ekran siparişi verildi)")
-            if st.button("Durumu Güncelle"):
-                if guncellenecek_no != "Cihaz Yok" and yeni_durum:
-                    cihaz_durum_guncelle(guncellenecek_no, yeni_durum)
-                    st.success("Durum başarıyla güncellendi!")
-                    st.rerun()
+            st.markdown("---")
+            st.markdown("### 🛠️ Cihaz İşlemleri (Güncelle / Sil)")
+            secilen_no = st.selectbox("İşlem yapılacak cihazı seçin:", df['takip_no'].tolist() if not df.empty else ["Cihaz Yok"])
+            col_guncelle, col_sil = st.columns(2)
+            with col_guncelle:
+                yeni_durum = st.text_input("Yeni durum mesajını yazın:")
+                if st.button("Durumu Güncelle"):
+                    if secilen_no != "Cihaz Yok" and yeni_durum:
+                        cihaz_durum_guncelle(secilen_no, yeni_durum)
+                        st.success("Durum güncellendi!")
+                        time.sleep(1)
+                        st.rerun()
+            with col_sil:
+                st.write("Cihazı sistemden kaldırmak için:")
+                if st.button("🚨 Cihazı Veritabanından Sil"):
+                    if secilen_no != "Cihaz Yok":
+                        cihaz_sil(secilen_no)
+                        st.error(f"{secilen_no} numaralı cihaz silindi.")
+                        time.sleep(1)
+                        st.rerun()
 
         with tab_mesajlar:
             st.markdown("### Web Sitesinden Gelen Mesajlar")
             conn = sqlite3.connect('amanos_gsm.db')
             df_mesajlar = pd.read_sql_query("SELECT id as ID, isim as Müşteri, tel as Telefon, konu as Konu, mesaj as Mesaj, tarih as Tarih FROM mesajlar ORDER BY id DESC", conn)
             conn.close()
-            
             if not df_mesajlar.empty:
                 st.dataframe(df_mesajlar, use_container_width=True)
             else:
                 st.info("Henüz web sitesi üzerinden gönderilmiş bir mesaj bulunmuyor.")
+
+        with tab_stok:
+            st.markdown("### Sisteme Yeni Ürün / Parça Ekle")
+            with st.form("yeni_stok_ekle"):
+                s_kat = st.selectbox("Kategori", ["Ekran", "Batarya", "Arka Cam", "Anakart Parçası", "Aksesuar"])
+                s_ad = st.text_input("Ürün Adı (Örn: iPhone 11 Pro Ekran)")
+                s_adet = st.number_input("Adet", min_value=0, step=1)
                 
+                if st.form_submit_button("Stoklara Ekle"):
+                    if s_ad:
+                        stok_ekle(s_kat, s_ad, s_adet)
+                        st.success(f"{s_ad} başarıyla stoklara eklendi.")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.warning("Ürün adı boş bırakılamaz.")
+            
+            st.markdown("---")
+            st.markdown("### 📦 Güncel Stok Durumu")
+            conn = sqlite3.connect('amanos_gsm.db')
+            df_stok = pd.read_sql_query("SELECT urun_id as ID, kategori as Kategori, urun_adi as 'Ürün Adı', adet as Adet FROM stok_takip", conn)
+            conn.close()
+            st.dataframe(df_stok, use_container_width=True)
+            
+            st.markdown("---")
+            st.markdown("### 🔄 Stok Adedi Güncelle veya Sil")
+            if not df_stok.empty:
+                secenekler = df_stok['ID'].astype(str) + " - " + df_stok['Ürün Adı']
+                secilen_stok = st.selectbox("İşlem Yapılacak Ürün:", secenekler.tolist())
+                secilen_id = int(secilen_stok.split(" - ")[0])
+                
+                col_stok1, col_stok2 = st.columns(2)
+                with col_stok1:
+                    yeni_adet = st.number_input("Yeni Adet Miktarını Girin:", min_value=0, step=1)
+                    if st.button("Adedi Güncelle"):
+                        stok_guncelle(secilen_id, yeni_adet)
+                        st.success("Stok başarıyla güncellendi!")
+                        time.sleep(1)
+                        st.rerun()
+                with col_stok2:
+                    st.write("Ürünü stok listesinden tamamen çıkarmak için:")
+                    if st.button("🚨 Ürünü Sistemden Sil"):
+                        stok_sil(secilen_id)
+                        st.error("Ürün sistemden silindi.")
+                        time.sleep(1)
+                        st.rerun()
+            else:
+                st.info("Sistemde kayıtlı stok bulunmuyor. Lütfen önce ürün ekleyin.")
+
+        st.markdown("---")        
         if st.button("Güvenli Çıkış Yap"):
             st.session_state["admin_giris"] = False
             st.rerun()
