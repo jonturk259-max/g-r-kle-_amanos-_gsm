@@ -17,7 +17,7 @@ import time
 # ==========================================
 # ★ GÜVENLİK AYARLARI ★
 # ==========================================
-ADMIN_SIFRESI = "Görükle16" 
+ADMIN_SIFRESI = "MCD4791MCD4791m,." 
 
 # ==========================================
 # 2. SAYFA YAPILANDIRMASI
